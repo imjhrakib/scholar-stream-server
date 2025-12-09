@@ -84,8 +84,16 @@ async function run() {
     app.delete("/users", async (req, res) => {});
 
     // shcolarship related api
-    app.post("/scholarships", async (req, res) => {});
-    app.get("/scholarships", async (req, res) => {});
+    app.post("/scholarships", async (req, res) => {
+      const scholarship = req.body;
+      scholarship.createdAt = new Date();
+      const result = await scholarshipCollection.insertOne(scholarship);
+      res.send(result);
+    });
+    app.get("/scholarships", async (req, res) => {
+      const result = await scholarshipCollection.find().toArray();
+      res.send(result);
+    });
     app.get("/scholarships/:id", async (req, res) => {});
     app.patch("/scholarships/:id", async (req, res) => {});
     app.delete("/scholarships/:id", async (req, res) => {});
