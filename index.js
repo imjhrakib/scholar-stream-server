@@ -30,8 +30,6 @@ const verifyFBToken = async (req, res, next) => {
   }
 };
 
-
-
 // middleware
 app.use(express.json());
 app.use(cors());
@@ -75,6 +73,13 @@ async function run() {
       res.send(result);
     });
     app.get("/users", async (req, res) => {});
+    // user role
+    app.get("/users/:email/role", async (req, res) => {
+      const email = req.params.email;
+      const query = { email };
+      const result = await userCollection.findOne(query);
+      res.send(result);
+    });
     app.patch("/users", async (req, res) => {});
     app.delete("/users", async (req, res) => {});
 
