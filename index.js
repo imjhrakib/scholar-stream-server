@@ -100,7 +100,16 @@ async function run() {
       const result = await scholarshipCollection.findOne(query);
       res.send(result);
     });
-    app.patch("/scholarships/:id", async (req, res) => {});
+    app.patch("/scholarships/:id", async (req, res) => {
+      const id = req.params.id;
+      const updateInfo = req.body;
+      console.log(updateInfo);
+      const query = { _id: new ObjectId(id) };
+      const result = await scholarshipCollection.updateOne(query, {
+        $set: updateInfo,
+      });
+      res.send(result);
+    });
     app.delete("/scholarships/:id", async (req, res) => {});
 
     // applications related api
