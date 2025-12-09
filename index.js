@@ -110,7 +110,12 @@ async function run() {
       });
       res.send(result);
     });
-    app.delete("/scholarships/:id", async (req, res) => {});
+    app.delete("/scholarships/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await scholarshipCollection.deleteOne(query);
+      res.send(result);
+    });
 
     // applications related api
     app.post("/applications", async (req, res) => {});
