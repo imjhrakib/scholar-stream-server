@@ -125,7 +125,11 @@ async function run() {
       res.send(result);
     });
     app.get("/scholarships", async (req, res) => {
-      const result = await scholarshipCollection.find().toArray();
+      const result = await scholarshipCollection
+        .find()
+        .sort({ postDate: 1 })
+        .limit(6)
+        .toArray();
       res.send(result);
     });
     app.get("/scholarship/:id", async (req, res) => {
@@ -154,12 +158,28 @@ async function run() {
     // applications related api
     app.post("/applications", async (req, res) => {
       const application = req.body;
+      application.status = "pending";
+      application.paymentStatus = "unpaid";
       application.createdAt = new Date();
       const result = await applicationCollection.insertOne(application);
       res.send(result);
     });
-    app.get("/applications", async (req, res) => {});
+    app.get("/applications/:email", async (req, res) => {
+      const email = req.params.email;
+      console.log(email);
+      const query = { userEmail: email };
+      const result = await applicationCollection.find(query).toArray();
+      res.send(result);
+    });
+    app.get("/application/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: id };
+      const result = await applicationCollection.findOne(query);
+
+      res.send(result);
+    });
     app.patch("/applications/:id/status", async (req, res) => {});
+
     app.delete("/applications/:id", async (req, res) => {});
 
     // reviews related api
