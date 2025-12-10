@@ -72,7 +72,24 @@ async function run() {
       const result = await userCollection.insertOne(user);
       res.send(result);
     });
-    app.get("/users", async (req, res) => {});
+    app.get("/users", async (req, res) => {
+      const result = await userCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get("/users/:email/myProfile", async (req, res) => {
+      const email = req.params.email;
+      const query = { email };
+      const result = await userCollection.findOne(query);
+      res.send(result);
+    });
+
+    app.get("/users/role/:role", async (req, res) => {
+      const role = req.params.role;
+
+      const users = await userCollection.find({ role }).toArray();
+      res.send(users);
+    });
     // user role
     app.get("/users/:email/role", async (req, res) => {
       const email = req.params.email;
@@ -80,8 +97,25 @@ async function run() {
       const result = await userCollection.findOne(query);
       res.send(result);
     });
-    app.patch("/users", async (req, res) => {});
-    app.delete("/users", async (req, res) => {});
+
+    app.patch("/users/:id/role", async (req, res) => {
+      const id = req.params.id;
+      const { role } = req.body;
+      const query = { _id: new ObjectId(id) };
+      const updateRole = {
+        $set: {
+          role,
+        },
+      };
+      const result = await userCollection.updateOne(query, updateRole);
+      res.send(result);
+    });
+    app.delete("/users/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await userCollection.deleteOne(query);
+      res.send(result);
+    });
 
     // shcolarship related api
     app.post("/scholarships", async (req, res) => {
@@ -103,7 +137,7 @@ async function run() {
     app.patch("/scholarships/:id", async (req, res) => {
       const id = req.params.id;
       const updateInfo = req.body;
-      console.log(updateInfo);
+
       const query = { _id: new ObjectId(id) };
       const result = await scholarshipCollection.updateOne(query, {
         $set: updateInfo,
@@ -118,7 +152,12 @@ async function run() {
     });
 
     // applications related api
-    app.post("/applications", async (req, res) => {});
+    app.post("/applications", async (req, res) => {
+      const application = req.body;
+      application.createdAt = new Date();
+      const result = await applicationCollection.insertOne(application);
+      res.send(result);
+    });
     app.get("/applications", async (req, res) => {});
     app.patch("/applications/:id/status", async (req, res) => {});
     app.delete("/applications/:id", async (req, res) => {});
