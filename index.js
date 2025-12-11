@@ -5,6 +5,8 @@ const app = express();
 const port = process.env.PORT || 3000;
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+
 const admin = require("firebase-admin");
 
 const serviceAccount = require("./scholarship-stream-firebase-adminsdk.json");
@@ -209,6 +211,78 @@ async function run() {
       const query = { _id: id };
       const result = await applicationCollection.deleteOne(query);
       res.send(result);
+    });
+
+    // payment related api
+    app.post("/payment-checkout-session", async (req, res) => {
+      const applicationInfo = req.body;
+
+      const amount = parseInt(applicationInfo.cost) * 100;
+      const session = await stripe.checkout.sessions.create({
+        line_items: [
+          {
+            // Provide the exact Price ID (for example, price_1234) of the product you want to sell
+            price_data: {
+              currency: "usd",
+              unit_amount: amount,
+              product_data: {
+                name: `Please pay for: ${applicationInfo.applicationName}`,
+              },
+            },
+            quantity: 1,
+          },
+        ],
+        mode: "payment",
+        metadata: {
+          applicationId: applicationInfo.applicationId,
+        },
+        customer_email: applicationInfo.userEmail,
+        success_url: `${process.env.SITE_DOMAIN}/dashboard/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${process.env.SITE_DOMAIN}/dashboard/payment-cancelled`,
+      });
+
+      res.send({ url: session.url });
+    });
+
+    //update
+    app.patch("/payment-success", async (req, res) => {
+      const sessionId = req.query.session_id;
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      // handle duplicate
+      const transactionId = session.payment_intent;
+      const query = { transactionId: transactionId };
+      const paymentExist = await applicationCollection.findOne(query);
+      const id = session.metadata.applicationId;
+      if (paymentExist) {
+        return res.send({
+          message: "already exits",
+          transactionId: transactionId,
+          applicationId: id,
+          scholarshipName: paymentExist.scholarshipName,
+          universityName: paymentExist.universityName,
+          amount: paymentExist.cost,
+        });
+      }
+      if (session.payment_status === "paid") {
+        const query = { _id: id };
+        const update = {
+          $set: {
+            paymentStatus: "paid",
+            transactionId: transactionId,
+          },
+        };
+        await applicationCollection.updateOne(query, update);
+
+        const application = await applicationCollection.findOne(query);
+        return res.send({
+          success: true,
+          transactionId,
+          applicationId: id,
+          scholarshipName: application.scholarshipName,
+          universityName: application.universityName,
+          amount: application.applicationFees,
+        });
+      }
     });
 
     // reviews related api
