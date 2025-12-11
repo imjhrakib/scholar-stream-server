@@ -166,7 +166,6 @@ async function run() {
     });
     app.get("/applications/:email", async (req, res) => {
       const email = req.params.email;
-      console.log(email);
       const query = { userEmail: email };
       const result = await applicationCollection.find(query).toArray();
       res.send(result);
@@ -180,7 +179,13 @@ async function run() {
     });
     app.patch("/applications/:id/status", async (req, res) => {});
 
-    app.delete("/applications/:id", async (req, res) => {});
+    app.delete("/applications/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: id };
+      console.log(query);
+      const result = await applicationCollection.deleteOne(query);
+      res.send(result);
+    });
 
     // reviews related api
     app.post("/reviews", async (req, res) => {});
