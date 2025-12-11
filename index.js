@@ -178,7 +178,7 @@ async function run() {
     });
     app.get("/application/:id", async (req, res) => {
       const id = req.params.id;
-      const query = { _id: id };
+      const query = { _id: new ObjectId(id) };
       const result = await applicationCollection.findOne(query);
 
       res.send(result);
@@ -186,7 +186,7 @@ async function run() {
     app.patch("/application/:id/status", async (req, res) => {
       const id = req.params.id;
       const { status } = req.body;
-      const query = { _id: id };
+      const query = { _id: new ObjectId(id) };
       const result = await applicationCollection.updateOne(query, {
         $set: { status },
       });
@@ -196,7 +196,7 @@ async function run() {
       const id = req.params.id;
       const { feedback } = req.body;
 
-      const query = { _id: id };
+      const query = { _id: new ObjectId(id) };
 
       const updatedDoc = {
         $set: { feedback },
@@ -206,9 +206,9 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/applications/:id", async (req, res) => {
+    app.delete("/application/:id", async (req, res) => {
       const id = req.params.id;
-      const query = { _id: id };
+      const query = { _id: new ObjectId(id) };
       const result = await applicationCollection.deleteOne(query);
       res.send(result);
     });
@@ -248,11 +248,14 @@ async function run() {
     app.patch("/payment-success", async (req, res) => {
       const sessionId = req.query.session_id;
       const session = await stripe.checkout.sessions.retrieve(sessionId);
+
       // handle duplicate
       const transactionId = session.payment_intent;
       const query = { transactionId: transactionId };
       const paymentExist = await applicationCollection.findOne(query);
+
       const id = session.metadata.applicationId;
+
       if (paymentExist) {
         return res.send({
           message: "already exits",
@@ -260,11 +263,11 @@ async function run() {
           applicationId: id,
           scholarshipName: paymentExist.scholarshipName,
           universityName: paymentExist.universityName,
-          amount: paymentExist.cost,
+          applicationFees: paymentExist.applicationFees,
         });
       }
       if (session.payment_status === "paid") {
-        const query = { _id: id };
+        const query = { _id: new ObjectId(id) };
         const update = {
           $set: {
             paymentStatus: "paid",
@@ -280,7 +283,7 @@ async function run() {
           applicationId: id,
           scholarshipName: application.scholarshipName,
           universityName: application.universityName,
-          amount: application.applicationFees,
+          applicationFees: application.applicationFees,
         });
       }
     });
@@ -309,20 +312,40 @@ async function run() {
     app.post("/reviews/:id", async (req, res) => {
       const id = req.params.id;
       const review = req.body;
+
       review.createdAt = new Date();
       const reviewExist = await reviewCollection.findOne({ applicationId: id });
       if (reviewExist) {
-        return res.send({ message: "review exist" });
+        return res.send({ message: "review already exist" });
       }
 
       const result = await reviewCollection.insertOne(review);
+      res.send(result);
+    });
+
+    app.patch("/review/:id/edit", async (req, res) => {
+      const id = req.params.id;
+      const { rating, comment } = req.body;
+      const updatedReview = {
+        $set: {
+          rating,
+          comment,
+        },
+      };
+      const query = { _id: new ObjectId(id) };
+      const result = await reviewCollection.updateOne(query, updatedReview);
       res.send(result);
     });
     app.get("/reviews", async (req, res) => {
       const result = await reviewCollection.find().toArray();
       res.send(result);
     });
-    app.delete("/reviews", async (req, res) => {});
+    app.delete("/reviews/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await reviewCollection.deleteOne(query);
+      res.send(result);
+    });
 
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
