@@ -170,6 +170,10 @@ async function run() {
       const result = await applicationCollection.find(query).toArray();
       res.send(result);
     });
+    app.get("/applications", async (req, res) => {
+      const result = await applicationCollection.find().toArray();
+      res.send(result);
+    });
     app.get("/application/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: id };
@@ -177,12 +181,32 @@ async function run() {
 
       res.send(result);
     });
-    app.patch("/applications/:id/status", async (req, res) => {});
+    app.patch("/application/:id/status", async (req, res) => {
+      const id = req.params.id;
+      const { status } = req.body;
+      const query = { _id: id };
+      const result = await applicationCollection.updateOne(query, {
+        $set: { status },
+      });
+      res.send(result);
+    });
+    app.patch("/application/:id/feedback", async (req, res) => {
+      const id = req.params.id;
+      const { feedback } = req.body;
+
+      const query = { _id: id };
+
+      const updatedDoc = {
+        $set: { feedback },
+      };
+      const result = await applicationCollection.updateOne(query, updatedDoc);
+
+      res.send(result);
+    });
 
     app.delete("/applications/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: id };
-      console.log(query);
       const result = await applicationCollection.deleteOne(query);
       res.send(result);
     });
