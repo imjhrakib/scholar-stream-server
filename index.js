@@ -284,10 +284,44 @@ async function run() {
         });
       }
     });
+    app.get("/payment-cancelled", async (req, res) => {
+      const sessionId = req.query.session_id;
+      try {
+        const session = await stripe.checkout.sessions.retrieve(sessionId);
+        const applicationId = session?.metadata?.applicationId;
+
+        const application = await applicationCollection.findOne({
+          _id: applicationId,
+        });
+        res.send({
+          scholarshipName: application?.scholarshipName || "",
+          errorMessage: "Payment was cancelled by user.",
+        });
+      } catch (err) {
+        res.send({
+          scholarshipName: "",
+          errorMessage: "Unable to fetch payment info.",
+        });
+      }
+    });
 
     // reviews related api
-    app.post("/reviews", async (req, res) => {});
-    app.get("/reviews", async (req, res) => {});
+    app.post("/reviews/:id", async (req, res) => {
+      const id = req.params.id;
+      const review = req.body;
+      review.createdAt = new Date();
+      const reviewExist = await reviewCollection.findOne({ applicationId: id });
+      if (reviewExist) {
+        return res.send({ message: "review exist" });
+      }
+
+      const result = await reviewCollection.insertOne(review);
+      res.send(result);
+    });
+    app.get("/reviews", async (req, res) => {
+      const result = await reviewCollection.find().toArray();
+      res.send(result);
+    });
     app.delete("/reviews", async (req, res) => {});
 
     // Send a ping to confirm a successful connection
