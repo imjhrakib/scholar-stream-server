@@ -61,6 +61,18 @@ async function run() {
     const scholarshipCollection = db.collection("scholarships");
     const applicationCollection = db.collection("applications");
     const reviewCollection = db.collection("reviews");
+
+    //middleware for admin
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded_email;
+      const query = { email };
+      const user = await userCollection.findOne(query);
+      if (!user || user.role !== "admin") {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+      next();
+    };
+
     // users related api
     app.post("/users", async (req, res) => {
       const user = req.body;
@@ -74,45 +86,56 @@ async function run() {
       const result = await userCollection.insertOne(user);
       res.send(result);
     });
-    app.get("/users", async (req, res) => {
+    app.get("/users", verifyFBToken, async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
     });
 
-    app.get("/users/:email/myProfile", async (req, res) => {
+    app.get("/users/:email/myProfile", verifyFBToken, async (req, res) => {
       const email = req.params.email;
       const query = { email };
       const result = await userCollection.findOne(query);
       res.send(result);
     });
 
-    app.get("/users/role/:role", async (req, res) => {
+    app.get("/users/role/:role", verifyFBToken, async (req, res) => {
       const role = req.params.role;
 
       const users = await userCollection.find({ role }).toArray();
       res.send(users);
     });
+    app.get("/users/role", verifyFBToken, async (req, res) => {
+      const query = { role: "student" };
+      const result = await userCollection.find(query).toArray();
+      res.send(result);
+    });
+
     // user role
-    app.get("/users/:email/role", async (req, res) => {
+    app.get("/users/:email/role", verifyFBToken, async (req, res) => {
       const email = req.params.email;
       const query = { email };
       const result = await userCollection.findOne(query);
       res.send(result);
     });
 
-    app.patch("/users/:id/role", async (req, res) => {
-      const id = req.params.id;
-      const { role } = req.body;
-      const query = { _id: new ObjectId(id) };
-      const updateRole = {
-        $set: {
-          role,
-        },
-      };
-      const result = await userCollection.updateOne(query, updateRole);
-      res.send(result);
-    });
-    app.delete("/users/:id", async (req, res) => {
+    app.patch(
+      "/users/:id/role",
+      verifyFBToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const { role } = req.body;
+        const query = { _id: new ObjectId(id) };
+        const updateRole = {
+          $set: {
+            role,
+          },
+        };
+        const result = await userCollection.updateOne(query, updateRole);
+        res.send(result);
+      }
+    );
+    app.delete("/users/:id", verifyFBToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await userCollection.deleteOne(query);
@@ -129,7 +152,7 @@ async function run() {
     app.get("/scholarships", async (req, res) => {
       const result = await scholarshipCollection
         .find()
-        .sort({ postDate: 1 })
+        .sort({ applicationFees: -1 })
         .limit(6)
         .toArray();
       res.send(result);
@@ -221,12 +244,12 @@ async function run() {
       const session = await stripe.checkout.sessions.create({
         line_items: [
           {
-            // Provide the exact Price ID (for example, price_1234) of the product you want to sell
             price_data: {
               currency: "usd",
               unit_amount: amount,
               product_data: {
-                name: `Please pay for: ${applicationInfo.applicationName}`,
+                name: `Application Fee: ${applicationInfo.applicationName}`,
+                description: `University: ${applicationInfo.universityName}\nDeadline: ${applicationInfo.deadline}\nFee: $${applicationInfo.cost}`,
               },
             },
             quantity: 1,
@@ -238,7 +261,7 @@ async function run() {
         },
         customer_email: applicationInfo.userEmail,
         success_url: `${process.env.SITE_DOMAIN}/dashboard/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${process.env.SITE_DOMAIN}/dashboard/payment-cancelled`,
+        cancel_url: `${process.env.SITE_DOMAIN}/dashboard/payment-cancelled?session_id={CHECKOUT_SESSION_ID}`,
       });
 
       res.send({ url: session.url });
@@ -292,12 +315,15 @@ async function run() {
       try {
         const session = await stripe.checkout.sessions.retrieve(sessionId);
         const applicationId = session?.metadata?.applicationId;
-
+        console.log(applicationId);
         const application = await applicationCollection.findOne({
-          _id: applicationId,
+          _id: new ObjectId(applicationId),
         });
         res.send({
           scholarshipName: application?.scholarshipName || "",
+          universityName: application?.universityName || "",
+          deadline: application?.deadline || "",
+          applicationFees: application?.applicationFees || "",
           errorMessage: "Payment was cancelled by user.",
         });
       } catch (err) {
@@ -337,6 +363,22 @@ async function run() {
       res.send(result);
     });
     app.get("/reviews", async (req, res) => {
+      const result = await reviewCollection.find().toArray();
+      res.send(result);
+    });
+    app.get("/reviews/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = {
+        userEmail: email,
+      };
+      const result = await reviewCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    app.get("/reviews/:id/review", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+
       const result = await reviewCollection.find().toArray();
       res.send(result);
     });
