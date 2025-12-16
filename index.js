@@ -2,7 +2,7 @@ const express = require("express");
 require("dotenv").config();
 const cors = require("cors");
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
@@ -218,7 +218,7 @@ async function run() {
       }
     });
 
-    app.get("/scholarships", async (req, res) => {
+    app.get("/scholarships", verifyFBToken, async (req, res) => {
       const result = await scholarshipCollection
         .find()
         .sort({ applicationFees: -1 })
@@ -250,7 +250,7 @@ async function run() {
     app.delete(
       "/scholarships/:id",
       verifyFBToken,
-      verifyModerator,
+      verifyAdmin,
       async (req, res) => {
         const id = req.params.id;
         const query = { _id: new ObjectId(id) };
