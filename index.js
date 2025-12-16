@@ -9,7 +9,12 @@ const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 const admin = require("firebase-admin");
 
-const serviceAccount = require("./scholarship-stream-firebase-adminsdk.json");
+// index.js
+const decoded = Buffer.from(
+  process.env.FIREBASE_SERVICE_KEY,
+  "base64"
+).toString("utf8");
+const serviceAccount = JSON.parse(decoded);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -478,17 +483,12 @@ async function run() {
       const result = await reviewCollection.find(query).toArray();
       res.send(result);
     });
-    app.delete(
-      "/reviews/:id",
-      verifyFBToken,
-      verifyModerator,
-      async (req, res) => {
-        const id = req.params.id;
-        const query = { _id: new ObjectId(id) };
-        const result = await reviewCollection.deleteOne(query);
-        res.send(result);
-      }
-    );
+    app.delete("/reviews/:id", verifyFBToken, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await reviewCollection.deleteOne(query);
+      res.send(result);
+    });
 
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
