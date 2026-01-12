@@ -165,7 +165,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/scholarships/search", verifyFBToken, async (req, res) => {
+    app.get("/scholarships/search", async (req, res) => {
       try {
         const {
           search = "",
@@ -222,18 +222,18 @@ async function run() {
       const result = await scholarshipCollection
         .find()
         .sort({ applicationFees: -1 })
-        .limit(6)
+        .limit(8)
         .toArray();
       res.send(result);
     });
-    app.get("/scholarships", verifyFBToken, async (req, res) => {
+    app.get("/scholarships", async (req, res) => {
       const result = await scholarshipCollection
         .find()
         .sort({ applicationFees: -1 })
         .toArray();
       res.send(result);
     });
-    app.get("/scholarship/:id", verifyFBToken, async (req, res) => {
+    app.get("/scholarship/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await scholarshipCollection.findOne(query);
@@ -484,7 +484,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/reviews/:id/review", verifyFBToken, async (req, res) => {
+    app.get("/reviews/:id/review", async (req, res) => {
       const id = req.params.id;
       const query = { scholarshipId: id };
       const result = await reviewCollection.find(query).toArray();
